@@ -1,14 +1,126 @@
+import numpy
+import scipy
+import copy
+from functools import reduce
+
+import time
+from scipy.optimize import (fmin_cg, minimize)
+from Source import kernel
+
+
 class MKLSSVM:
-    def ___init__(self, kernel_set, C=1.0, R=1.0, tol=1e-3, max_iter=1000):
+    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-3, max_iter=1000):
         self.C = C
         self.R = R
         self.tol = tol
         self.max_iter = max_iter
         self.kernel_set = kernel_set
+        self.beta = numpy.array([1.0 / len(kernel_set) for k in kernel_set])
 
-    def fit(self, X, y):
-        pass
+    def fit(self, data, target):
+        def unweighted_kernel_matrix():
+            # H_vec представляет из себя вектор матриц вычисленных ядерных функций
+            # взвешенная сумма этих матриц дает искомую матрицу ядер
+            # значение ядер не поменяется на протяжении всего алгоритма
+            # будут меняться только веса
+            trainSeqLen = len(target)
+            H_vec = []
+            for K in self.kernel_set:
+                H = numpy.matrix(numpy.zeros(shape=(trainSeqLen, trainSeqLen)))
+                for i in range(trainSeqLen):
+                    for j in range(i, trainSeqLen):
+                        val = K.compute(data[i], data[j])
+                        H[i, j] = val
+                        H[j, i] = val
+                H_vec.append(H)
+            return H_vec
 
-    def predict(self, X):
-        pass
+        # Large Scale Algorithm
+        def lagrange_coefficient_estimation():
+            t1 = time.time()
+            trainSeqLen = len(target)
+            weighted_H = map(lambda h, beta: h * beta, self.__Hvec, self.beta)
+            H = reduce(lambda p_h, h: p_h + h, weighted_H)
+            for i in range(trainSeqLen):
+                for j in range(i, trainSeqLen):
+                    H[i, j] *= target[i] * target[j]
+                    H[j, i] *= target[j] * target[i]
+                    if i == j:
+                        H[i, j] += 1.0 / self.C
 
+            t2 = time.time()
+            print("Заполнение матрицы Н: ", t2 - t1)
+
+            d = numpy.ones(trainSeqLen)
+            eta = scipy.sparse.linalg.cg(H, target)[0]
+            nu = scipy.sparse.linalg.cg(H, d)[0]
+            s = numpy.dot(target.T, eta)
+            b = numpy.dot(eta.T, d) / s
+            alpha = nu - eta * b
+            print("Решение СЛАУ: ", time.time() - t2)
+            return b, alpha
+
+        def kernel_coefficient_estimation():
+            def score_func(beta_vec):
+                def K(x_v, k):
+                    return numpy.asarray([y * k.compute(x_v, x) for y, x in zip(target, data)], dtype=float)
+
+                # постоянный пересчет К не нужен
+                def K_sum(x_v):
+                    weighted_kernels = []
+                    for b_c, k in zip(beta_vec, self.kernel_set):
+                        kkk = numpy.asarray([y * k.compute(x_v, x) for y, x in zip(target, data)], dtype=float)
+                        weighted_kernels.append(b_c * kkk)
+                    return numpy.array(reduce(lambda l, m: l + m, weighted_kernels))
+
+                loss_func_vec = []
+                for x, y in zip(data, target):
+                    kkk = K_sum(x)
+                    loss_func_vec.append(1.0 - y * self.b - y * numpy.dot(kkk, self.alpha))
+
+                loss_func = reduce(lambda e1, e2: e1 + e2 ** 2, loss_func_vec)
+                return loss_func + self.R * sum(beta_vec)
+
+            t1 = time.time()
+            cons = ({'type': 'eq', 'fun': lambda x: sum(x) - 1.0})
+            bnds = [(0.0, 1.0) for _ in self.beta]
+            betaopt = minimize(score_func, self.beta, bounds=bnds, constraints=cons, method='SLSQP')
+            print(betaopt.x, betaopt.fun)
+            print("Minimize: ", time.time() - t1)
+            return betaopt.x, betaopt.fun
+
+        self.__Xfit = data
+        self.__Yfit = target
+        self.__Hvec = unweighted_kernel_matrix()
+        prev_score_value = 0
+        prev_beta_norm = numpy.linalg.norm(self.beta)
+        cur_iter = 0
+        while True:
+            self.b, self.alpha = lagrange_coefficient_estimation()
+            self.beta, score_value = kernel_coefficient_estimation()
+            # выход по количеству итераций
+            if cur_iter >= self.max_iter:
+                break
+            # выход по невязке функции
+            if abs(prev_score_value - score_value) < self.tol:
+                break
+            # выход по невязке нормы коэфициентов
+            beta_norm = numpy.linalg.norm(self.beta)
+            if abs(prev_beta_norm - beta_norm) < self.tol:
+                break
+            prev_score_value = score_value
+            prev_beta_norm = beta_norm
+            cur_iter += 1
+
+        return self
+
+    def predict(self, data):
+        def y_prediction(z):
+            def weighted_kernel(z, x):
+                return sum([beta * K.compute(z, x) for beta, K in zip(self.beta, self.kernel_set)])
+
+            support_vectors_sum = sum(
+                [alpha * y * weighted_kernel(z, x) for alpha, x, y in zip(self.alpha, self.__Xfit, self.__Yfit)])
+            return numpy.sign(support_vectors_sum + self.b)
+
+        return [y_prediction(test_x) for test_x in data]
