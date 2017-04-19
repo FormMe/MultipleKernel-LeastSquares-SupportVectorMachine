@@ -20,6 +20,14 @@ def class_transform(y, classes):
 
 import scipy
 if __name__ == "__main__":
+    # a = [2,4]
+    # trainSeqLen = 3
+    # b = [numpy.matrix(numpy.ones(shape=(trainSeqLen, trainSeqLen))),numpy.matrix(numpy.ones(shape=(trainSeqLen, trainSeqLen)))]
+    # b = list(map(lambda x,y : x*y, a,b))
+    # print(b)
+    # for i, _ in enumerate(b):
+    #     print(b[i][1])
+    # print(b[:][1])
     df = pandas.read_csv('../data/iris.csv')
     df = df.drop(['petal_width'], axis=1)
     df = df.drop(['petal_length'], axis=1)
@@ -31,12 +39,11 @@ if __name__ == "__main__":
         class_transform(y, classes)
         kernelset = [kernel.RBF(1e-1), kernel.RBF(1)]
         estimator = mk_ls_svm.MKLSSVM(kernelset)
-        estimator.fit(X,y)
-        predicted = estimator.predict(X)
-        cross_val_accuracy = accuracy_score(list(y), predicted)
-
-        #cross_val_accuracy = cross_val_score(estimator, X, y, cv=1)
+        # estimator.fit(X,y)
+        # predicted = estimator.predict(X)
+        # cross_val_accuracy = accuracy_score(list(y), predicted)
+        cross_val_accuracy = cross_val_score(estimator, X, y, cv=5)
         print(cross_val_accuracy)
-        #print(numpy.mean(cross_val_accuracy))
+        print(numpy.mean(cross_val_accuracy))
     else:
         print('Multiclass classification is not supproted')

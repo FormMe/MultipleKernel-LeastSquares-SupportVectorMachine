@@ -37,7 +37,6 @@ class MKLSSVM:
 
         # Large Scale Algorithm
         def lagrange_coefficient_estimation():
-            t1 = time.time()
             trainSeqLen = len(target)
             weighted_H = map(lambda h, beta: h * beta, self.__Hvec, self.beta)
             H = reduce(lambda p_h, h: p_h + h, weighted_H)
@@ -48,45 +47,34 @@ class MKLSSVM:
                     if i == j:
                         H[i, j] += 1.0 / self.C
 
-            t2 = time.time()
-            print("Заполнение матрицы Н: ", t2 - t1)
-
             d = numpy.ones(trainSeqLen)
             eta = scipy.sparse.linalg.cg(H, target)[0]
             nu = scipy.sparse.linalg.cg(H, d)[0]
             s = numpy.dot(target.T, eta)
             b = numpy.dot(eta.T, d) / s
             alpha = nu - eta * b
-            print("Решение СЛАУ: ", time.time() - t2)
             return b, alpha
 
         def kernel_coefficient_estimation():
             def score_func(beta_vec):
-                def K(x_v, k):
-                    return numpy.asarray([y * k.compute(x_v, x) for y, x in zip(target, data)], dtype=float)
-
-                # постоянный пересчет К не нужен
-                def K_sum(x_v):
+                def K_sum(i):
                     weighted_kernels = []
-                    for b_c, k in zip(beta_vec, self.kernel_set):
-                        kkk = numpy.asarray([y * k.compute(x_v, x) for y, x in zip(target, data)], dtype=float)
-                        weighted_kernels.append(b_c * kkk)
+                    for b_c, H in zip(beta_vec, self.__Hvec):
+                        weighted_kernels.append(
+                            b_c * numpy.asarray([y * H[i, j] for j, y in enumerate(target)], dtype=float))
                     return numpy.array(reduce(lambda l, m: l + m, weighted_kernels))
 
                 loss_func_vec = []
-                for x, y in zip(data, target):
-                    kkk = K_sum(x)
-                    loss_func_vec.append(1.0 - y * self.b - y * numpy.dot(kkk, self.alpha))
+                for i, y in enumerate(target):
+                    weighted_kernels_sum = K_sum(i)
+                    loss_func_vec.append(1.0 - y * self.b - y * numpy.dot(weighted_kernels_sum, self.alpha))
 
                 loss_func = reduce(lambda e1, e2: e1 + e2 ** 2, loss_func_vec)
                 return loss_func + self.R * sum(beta_vec)
 
-            t1 = time.time()
             cons = ({'type': 'eq', 'fun': lambda x: sum(x) - 1.0})
             bnds = [(0.0, 1.0) for _ in self.beta]
             betaopt = minimize(score_func, self.beta, bounds=bnds, constraints=cons, method='SLSQP')
-            print(betaopt.x, betaopt.fun)
-            print("Minimize: ", time.time() - t1)
             return betaopt.x, betaopt.fun
 
         self.__Xfit = data
