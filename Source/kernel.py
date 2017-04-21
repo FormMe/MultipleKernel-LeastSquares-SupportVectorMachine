@@ -1,12 +1,7 @@
 import numpy
 
 
-class Kernel:
-    def compute(self, x, y):
-        pass
-
-
-class RBF(Kernel):
+class RBF:
     def __init__(self, sigma):
         self._sigma = sigma
 

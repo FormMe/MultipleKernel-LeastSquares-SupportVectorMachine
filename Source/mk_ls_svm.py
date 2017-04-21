@@ -77,6 +77,15 @@ class MKLSSVM:
             betaopt = minimize(score_func, self.beta, bounds=bnds, constraints=cons, method='SLSQP')
             return betaopt.x, betaopt.fun
 
+        classes = numpy.unique(target)
+        if len(classes) != 2:
+            raise 'Multiclass classification is not supproted'
+
+        self.class_dict = {
+            '1.0': classes[0],
+            '-1.0': classes[1]}
+        target = numpy.array(list(map(lambda y: 1.0 if y == classes[0] else -1.0, target)))
+
         self.__Xfit = data
         self.__Yfit = target
         self.__Hvec = unweighted_kernel_matrix()
@@ -109,6 +118,9 @@ class MKLSSVM:
 
             support_vectors_sum = sum(
                 [alpha * y * weighted_kernel(z, x) for alpha, x, y in zip(self.alpha, self.__Xfit, self.__Yfit)])
-            return numpy.sign(support_vectors_sum + self.b)
+
+            p = str(numpy.sign(support_vectors_sum + self.b))
+            return self.class_dict[p]
 
         return [y_prediction(test_x) for test_x in data]
+
