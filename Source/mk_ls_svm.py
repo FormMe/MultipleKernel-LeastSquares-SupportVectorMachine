@@ -1,11 +1,7 @@
 import numpy
 import scipy
-import copy
+from scipy.optimize import (minimize)
 from functools import reduce
-
-import time
-from scipy.optimize import (fmin_cg, minimize)
-from Source import kernel
 
 
 class MKLSSVM:
@@ -15,7 +11,7 @@ class MKLSSVM:
         self.tol = tol
         self.max_iter = max_iter
         self.kernel_set = kernel_set
-        self.beta = numpy.array([1.0 / len(kernel_set) for k in kernel_set])
+        self.beta = numpy.array([1.0 / len(kernel_set) for _ in kernel_set])
 
     def fit(self, data, target):
         def unweighted_kernel_matrix():
@@ -78,8 +74,8 @@ class MKLSSVM:
             return betaopt.x, betaopt.fun
 
         classes = numpy.unique(target)
-        if len(classes) != 2:
-            raise 'Multiclass classification is not supproted'
+        if len(classes) == 1 or len(classes) != 2:
+            raise Exception('The number of classes has to be equal two')
 
         self.class_dict = {
             '1.0': classes[0],
@@ -108,6 +104,7 @@ class MKLSSVM:
             prev_score_value = score_value
             prev_beta_norm = beta_norm
             cur_iter += 1
+            print(cur_iter)
 
         return self
 
