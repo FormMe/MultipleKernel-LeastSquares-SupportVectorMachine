@@ -21,15 +21,15 @@ def main(argv):
     df = read_csv(argv[0])
     X = np.array(df.drop(['y'], axis=1))
     y = np.array(df.y)
-    reg_param_vals = [10 ** e for e in range(-1, 5)]
+    reg_param_vals = [10 ** e for e in range(-4, 5)]
     C = reg_param_vals[rank % len(reg_param_vals)]
     kernel_set = [RBF(1e+2),RBF(1e+3),RBF(1e+4)]
-    res = test_classifier(X, y, C, kernel_set, rank >= len(reg_param_vals))
+    res = test_classifier(X, y, C, kernel_set)
     res = comm.gather(res, root=0)
 
     if rank == 0:
         res = list(reduce(lambda x, y: x + y, list(res)))
-        res_df = DataFrame(data=res, columns=['C', 'R', 'CV 10Kfold score'])
+        res_df = DataFrame(data=res, columns=['C', 'CV 10Kfold score'])
         res_df.to_excel('../Results/three_kernels/'+argv[1]+'_test_res.xls', index=False)
 
 
@@ -63,7 +63,7 @@ def pplot():
     df = read_csv('../data/test_sparse.csv')
     X = np.array(df.drop(['y'], axis=1))
     y = np.array(df.y)
-    clf = MKLSSVM([RBF(1e+2),RBF(1e+3),RBF(1e+4)], C=1e+2, R=1e-1).fit(X,y)
+    clf = MKLSSVM([RBF(1e+2),RBF(1e+3),RBF(1e+4)], C=1e+2).fit(X,y)
     #clf = svm.SVC(C=10000, gamma=1e+1, kernel='rbf').fit(X,y)
     p = clf.predict(X)
     print(accuracy_score(list(p), list(y)))

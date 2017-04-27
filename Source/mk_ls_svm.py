@@ -5,7 +5,7 @@ from functools import reduce
 
 
 class MKLSSVM:
-    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-3, max_iter=100):
+    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-4, max_iter=500):
         self.C = C
         self.R = R
         self.tol = tol
