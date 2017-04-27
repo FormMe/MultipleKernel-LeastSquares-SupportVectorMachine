@@ -1,29 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from pandas import DataFrame, read_csv
 from sklearn.metrics import mean_squared_error
-from Source.kernel import RBF
-from Source.valid_model_estimator import *
 
+from kernel import RBF
+from crossvalidation import *
+from mk_ls_svm import MKLSSVM
 
-def f(z):
-    return z**2 - 5
-    # data = [1,3,5,6]
-    # targrt =[2,6,5,7]
-    # alpha = [10,4,5,1]
-    # kernel_set = [RBF(1e-3),RBF(1e-2),RBF(1e-1),RBF(1),RBF(10),RBF(10)]
-    # beta = [0.5,0,0.1,0.3,0,0.1]
-    # b = -3
-    # def weighted_kernel(z, x):
-    #     return sum([bt * K.compute(z, x) for bt, K in zip(beta, kernel_set)])
-    #
-    # support_vectors_sum = sum([a * y * weighted_kernel(z, x) for a, x, y in zip(alpha, data, targrt)])
-    #
-    # return support_vectors_sum + b
+def f(x):
+    return -723.527 + 1503.5*x - 1098.49*x**2 + 382.18*x**3 - 68.5661*x**4 + 6.12013*x**5 - 0.215064*x**6
 
-def model_generator(rng, count):
-    x1 = np.random.uniform(rng[0], rng[1], count)
-    x2 = np.random.uniform(rng[0], rng[1], count)
+def model_generator(x_axis, y_axis, count):
+    x1 = np.random.uniform(x_axis[0], x_axis[1], count)
+    x2 = np.random.uniform(y_axis[0], y_axis[1], count)
     X = np.array(list(zip(x1, x2)))
     y = np.array(list(map(lambda x: 1.0 if f(x[0]) < x[1] else -1.0, X)))
     return X, y
@@ -37,37 +27,50 @@ def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
     # plot the decision surface
     x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
     x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-    xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
-                           np.arange(x2_min, x2_max, resolution))
-
-    Z = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
-
-    Z = Z.reshape(xx1.shape)
-    plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
-    plt.xlim(xx1.min(), xx1.max())
-    plt.ylim(xx2.min(), xx2.max())
+    # xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+    #                        np.arange(x2_min, x2_max, resolution))
+    #
+    # Z = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+    #
+    # Z = Z.reshape(xx1.shape)
+    # plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
+    # plt.xlim(xx1.min(), xx1.max())
+    # plt.ylim(xx2.min(), xx2.max())
 
     for idx, cl in enumerate(np.unique(y)):
         plt.scatter(x=X[y == cl, 0], y=X[y == cl, 1],
                     alpha=0.8, c=cmap(idx),
                     label=cl)
 
-    data = np.linspace(x1_min, x1_max, 200)
-    target = [f(x) for x in data]
-    plt.plot(data, target)
+    x1 = np.linspace(x1_min, x1_max, 500)
+    x2 = list(map(f, x1))
+    plt.plot(x1,x2)
+
     plt.show()
 
-def samples_generator(min_x, max_x, resolution=0.05):
-    x1 = np.arange(min_x, max_x + resolution, resolution)
-    x2 = map(lambda z: z * np.sin(z), x1)
-    return list(zip(x1,x2))
 
-def init_valid_model():
-    X = samples_generator(-10, 10)
-    y = [np.random.uniform(-0.05,0.05) for _,_ in enumerate(X)]
-    kernel_set = [RBF(1e-1), RBF(1)]
-    beta = [1.0 / len(kernel_set)] * len(kernel_set)
-    valid_model = ValidModel(kernel_set, beta, C=5).fit(X, np.array(y))
-    p = valid_model.predict(X)
-    print("MSE: ", mean_squared_error(y, p))
-    return valid_model
+def gen_data():
+    x1 = np.linspace(2, 8, 100).tolist()
+    x2 = list(map(f, x1))
+    dx1 = list(map(lambda x: x - 5.0, x2))
+    dx2 = list(map(lambda x: x + 5.0, x2))
+    x1 = x1 + x1
+    x2 = dx1 + dx2
+    X = np.array(list(zip(x1, x2)))
+    y = np.array(list(map(lambda x: 1.0 if f(x[0]) < x[1] else -1.0, X)))
+
+    df = DataFrame(data=list(zip(x1, x2, y)), columns=['x1', 'x2', 'y'])
+    print(df.head())
+    df.to_csv('../data/test.csv', index=False)
+
+def test_one_kernel_classifier(X, y, sigma):
+    kernel_set = [RBF(sigma)]
+    reg_param_vals = [10**e for e in range(-4, 5)]
+
+    res = []
+    for C in reg_param_vals:
+        for R in reg_param_vals:
+            clf = MKLSSVM(kernel_set, C=C, R=R)
+            score = np.mean(cross_val_score(clf, X, y))
+            res.append((sigma,C,R,score))
+    return DataFrame(data=res, columns=['sigma','C','R','CV 10Kfold score'])
