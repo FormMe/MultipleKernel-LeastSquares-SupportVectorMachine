@@ -1,21 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from sklearn.metrics import mean_squared_error
 from Source.kernel import RBF
+from Source.valid_model_estimator import *
+
 
 def f(z):
-    data = [1,3,5,6]
-    targrt =[2,6,5,7]
-    alpha = [10,4,5,1]
-    kernel_set = [RBF(1e-3),RBF(1e-2),RBF(1e-1),RBF(1),RBF(10),RBF(10)]
-    beta = [0.5,0,0.1,0.3,0,0.1]
-    b = -3
-    def weighted_kernel(z, x):
-        return sum([bt * K.compute(z, x) for bt, K in zip(beta, kernel_set)])
-
-    support_vectors_sum = sum([a * y * weighted_kernel(z, x) for a, x, y in zip(alpha, data, targrt)])
-
-    return support_vectors_sum + b
+    return z**2 - 5
+    # data = [1,3,5,6]
+    # targrt =[2,6,5,7]
+    # alpha = [10,4,5,1]
+    # kernel_set = [RBF(1e-3),RBF(1e-2),RBF(1e-1),RBF(1),RBF(10),RBF(10)]
+    # beta = [0.5,0,0.1,0.3,0,0.1]
+    # b = -3
+    # def weighted_kernel(z, x):
+    #     return sum([bt * K.compute(z, x) for bt, K in zip(beta, kernel_set)])
+    #
+    # support_vectors_sum = sum([a * y * weighted_kernel(z, x) for a, x, y in zip(alpha, data, targrt)])
+    #
+    # return support_vectors_sum + b
 
 def model_generator(rng, count):
     x1 = np.random.uniform(rng[0], rng[1], count)
@@ -52,3 +56,18 @@ def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
     target = [f(x) for x in data]
     plt.plot(data, target)
     plt.show()
+
+def samples_generator(min_x, max_x, resolution=0.05):
+    x1 = np.arange(min_x, max_x + resolution, resolution)
+    x2 = map(lambda z: z * np.sin(z), x1)
+    return list(zip(x1,x2))
+
+def init_valid_model():
+    X = samples_generator(-10, 10)
+    y = [np.random.uniform(-0.05,0.05) for _,_ in enumerate(X)]
+    kernel_set = [RBF(1e-1), RBF(1)]
+    beta = [1.0 / len(kernel_set)] * len(kernel_set)
+    valid_model = ValidModel(kernel_set, beta, C=5).fit(X, np.array(y))
+    p = valid_model.predict(X)
+    print("MSE: ", mean_squared_error(y, p))
+    return valid_model

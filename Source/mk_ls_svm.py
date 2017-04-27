@@ -116,8 +116,7 @@ class MKLSSVM:
             support_vectors_sum = sum(
                 [alpha * y * weighted_kernel(z, x) for alpha, x, y in zip(self.alpha, self.__Xfit, self.__Yfit)])
 
-            p = str(numpy.sign(support_vectors_sum + self.b))
-            return self.class_dict[p]
+            return self.class_dict[str(numpy.sign(support_vectors_sum + self.b))]
 
         return [y_prediction(test_x) for test_x in data]
 
