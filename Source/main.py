@@ -24,13 +24,15 @@ def main(argv):
     reg_param_vals = [10 ** e for e in range(-4, 5)]
     C = reg_param_vals[rank % len(reg_param_vals)]
     kernel_set = [RBF(1e+2),RBF(1e+3),RBF(1e+4)]
-    res = test_classifier(X, y, C, kernel_set)
+    clf = MKLSSVM(kernel_set, C=C)
+    score = cross_val_score(clf, X, y, rank, cv=10)
+    res = (C, score * 100)
     res = comm.gather(res, root=0)
 
     if rank == 0:
-        res = list(reduce(lambda x, y: x + y, list(res)))
-        res_df = DataFrame(data=res, columns=['C', 'CV 10Kfold score'])
-        res_df.to_excel('../Results/three_kernels/'+argv[1]+'_test_res.xls', index=False)
+        #res = list(reduce(lambda x, y: x + y, list(res)))
+        res_df = DataFrame(data=res, columns=['C', 'score'])
+        res_df.to_excel(argv[1], index=False)
 
 
 def best_clf():

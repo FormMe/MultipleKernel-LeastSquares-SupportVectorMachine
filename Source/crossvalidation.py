@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 
 #K-fold Cross-Validation
-def cross_val_score(clf, X, y, cv=10):
+def cross_val_score(clf, X, y, rank, cv=10):
     data = list(zip(X, y))
     np.random.shuffle(data)
     data = np.array(data)
@@ -23,4 +23,5 @@ def cross_val_score(clf, X, y, cv=10):
 
         clf.fit(train_X, train_y)
         scores.append(accuracy_score(list(test_y), clf.predict(test_X)))
+
     return np.mean(scores)

@@ -70,7 +70,11 @@ class MKLSSVM:
 
             cons = ({'type': 'eq', 'fun': lambda x: sum(x) - 1.0})
             bnds = [(0.0, 1.0) for _ in self.beta]
-            betaopt = minimize(score_func, self.beta, bounds=bnds, constraints=cons, method='SLSQP')
+            betaopt = minimize(score_func, self.beta,
+                               bounds=bnds, constraints=cons,
+                               method='SLSQP',
+                               options={'maxiter':1000, 'disp':False})
+
             return betaopt.x, betaopt.fun
 
         classes = numpy.unique(target)
@@ -90,6 +94,8 @@ class MKLSSVM:
         cur_iter = 0
         while True:
             self.b, self.alpha = lagrange_coefficient_estimation()
+            if len(self.kernel_set) == 1:
+                break
             self.beta, score_value = kernel_coefficient_estimation()
             # выход по количеству итераций
             if cur_iter >= self.max_iter:

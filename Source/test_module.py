@@ -74,7 +74,3 @@ def gen_data():
     print(df.head())
     df.to_csv('../data/test.csv', index=False)
 
-def test_classifier(X, y, C, kernel_set):
-    clf = MKLSSVM(kernel_set, C=C)
-    score = cross_val_score(clf, X, y, cv=10)
-    return (C, score * 100)
