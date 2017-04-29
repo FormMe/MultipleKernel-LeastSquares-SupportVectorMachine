@@ -9,7 +9,8 @@ from crossvalidation import *
 from mk_ls_svm import MKLSSVM
 
 def f(x):
-    return -723.527 + 1503.5*x - 1098.49*x**2 + 382.18*x**3 - 68.5661*x**4 + 6.12013*x**5 - 0.215064*x**6
+    #return 16704.2 - 33619.7*x + 27184.*x**2 - 11519.4*x**3 + 2777.54*x**4 - 382.819*x**5 + 28.0464*x**6 - 0.846072*x**7
+    return -1085.38 + 1985.84*x - 1356.23*x**2 + 453.007*x**3 - 79.1474*x**4 + 6.93702*x**5 - 0.240592*x**6
 
 def model_generator(x_axis, y_axis, count):
     x1 = np.random.uniform(x_axis[0], x_axis[1], count)
@@ -19,7 +20,7 @@ def model_generator(x_axis, y_axis, count):
     return X, y
 
 
-def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
+def plot_decision_regions(X, y, classifier, resolution=0.1):
     # setup marker generator and color map
     colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
     cmap = ListedColormap(colors[:len(np.unique(y))])
@@ -27,30 +28,40 @@ def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
     # plot the decision surface
     x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
     x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-    # xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
-    #                        np.arange(x2_min, x2_max, resolution))
-    #
-    # Z = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
-    #
-    # Z = Z.reshape(xx1.shape)
-    # plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
-    # plt.xlim(xx1.min(), xx1.max())
-    # plt.ylim(xx2.min(), xx2.max())
+    xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                           np.arange(x2_min, x2_max, resolution))
+
+    grid_X = np.array([xx1.ravel(), xx2.ravel()]).T
+
+    # step = len(grid_X) / size
+    # grid_X_local = grid_X[rank*step:rank+step]
+
+    Z = np.array(classifier.predict(grid_X))
+    Z = Z.reshape(xx1.shape)
+
+    plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
+    plt.xlim(xx1.min(), xx1.max())
+    plt.ylim(xx2.min(), xx2.max())
 
     for idx, cl in enumerate(np.unique(y)):
         plt.scatter(x=X[y == cl, 0], y=X[y == cl, 1],
                     alpha=0.8, c=cmap(idx),
                     label=cl)
 
-    x1 = np.linspace(x1_min, x1_max, 500)
+    x1 = np.linspace(x1_min + 1, x1_max - 1, 500)
     x2 = list(map(f, x1))
     plt.plot(x1,x2)
 
     plt.show()
 
+def gen():
+    X, y = model_generator((1.5,8),(-150,150), 1000)
+    df = DataFrame(data=list(zip(X[:,0], X[:,1], y)), columns=['x1', 'x2', 'y'])
+    df.to_csv('../data/test_3.csv', index=False)
+
 
 def gen_data():
-    x1 = np.linspace(2, 8, 100).tolist()
+    x1 = np.linspace(0, 10, 100).tolist()
     x2 = list(map(f, x1))
     dx1 = list(map(lambda x: x - 5.0, x2))
     dx2 = list(map(lambda x: x + 5.0, x2))
@@ -63,14 +74,13 @@ def gen_data():
     print(df.head())
     df.to_csv('../data/test.csv', index=False)
 
-def test_one_kernel_classifier(X, y, sigma):
-    kernel_set = [RBF(sigma)]
-    reg_param_vals = [10**e for e in range(-4, 5)]
-
+def test_classifier(X, y, C, kernel_set, flag):
+    s = -4 if flag else 1
+    e = 1 if flag else 5
+    reg_param_vals = [10 ** e for e in range(s,e)]
     res = []
-    for C in reg_param_vals:
-        for R in reg_param_vals:
-            clf = MKLSSVM(kernel_set, C=C, R=R)
-            score = np.mean(cross_val_score(clf, X, y))
-            res.append((sigma,C,R,score))
-    return DataFrame(data=res, columns=['sigma','C','R','CV 10Kfold score'])
+    for R in reg_param_vals:
+        clf = MKLSSVM(kernel_set, C=C, R=R)
+        score = cross_val_score(clf, X, y, cv=10)
+        res.append((C, R, score * 100))
+    return res

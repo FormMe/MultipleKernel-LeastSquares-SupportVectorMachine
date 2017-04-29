@@ -5,7 +5,7 @@ from functools import reduce
 
 
 class MKLSSVM:
-    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-3, max_iter=1000):
+    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-3, max_iter=100):
         self.C = C
         self.R = R
         self.tol = tol
@@ -66,7 +66,7 @@ class MKLSSVM:
                     loss_func_vec.append(1.0 - y * self.b - y * numpy.dot(weighted_kernels_sum, self.alpha))
 
                 loss_func = reduce(lambda e1, e2: e1 + e2 ** 2, loss_func_vec)
-                return loss_func + self.R * sum(beta_vec)
+                return loss_func
 
             cons = ({'type': 'eq', 'fun': lambda x: sum(x) - 1.0})
             bnds = [(0.0, 1.0) for _ in self.beta]
@@ -104,7 +104,6 @@ class MKLSSVM:
             prev_score_value = score_value
             prev_beta_norm = beta_norm
             cur_iter += 1
-            print(cur_iter)
 
         return self
 
@@ -115,8 +114,9 @@ class MKLSSVM:
 
             support_vectors_sum = sum(
                 [alpha * y * weighted_kernel(z, x) for alpha, x, y in zip(self.alpha, self.__Xfit, self.__Yfit)])
-
-            return self.class_dict[str(numpy.sign(support_vectors_sum + self.b))]
+            p = support_vectors_sum + self.b
+            if p == 0.0:
+                p = 1.0;
+            return self.class_dict[str(numpy.sign(p))]
 
         return [y_prediction(test_x) for test_x in data]
-
