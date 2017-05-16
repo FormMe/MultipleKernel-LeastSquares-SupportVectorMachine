@@ -9,8 +9,9 @@ from crossvalidation import *
 from mk_ls_svm import MKLSSVM
 
 def f(x):
+    return x**2
     #return 16704.2 - 33619.7*x + 27184.*x**2 - 11519.4*x**3 + 2777.54*x**4 - 382.819*x**5 + 28.0464*x**6 - 0.846072*x**7
-    return -1085.38 + 1985.84*x - 1356.23*x**2 + 453.007*x**3 - 79.1474*x**4 + 6.93702*x**5 - 0.240592*x**6
+    #return -1085.38 + 1985.84*x - 1356.23*x**2 + 453.007*x**3 - 79.1474*x**4 + 6.93702*x**5 - 0.240592*x**6
 
 def model_generator(x_axis, y_axis, count):
     x1 = np.random.uniform(x_axis[0], x_axis[1], count)
@@ -20,7 +21,7 @@ def model_generator(x_axis, y_axis, count):
     return X, y
 
 
-def plot_decision_regions(X, y, classifier, resolution=0.1):
+def plot_decision_regions(X, y, classifier, resolution=0.1, hyperplane=False):
     # setup marker generator and color map
     colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
     cmap = ListedColormap(colors[:len(np.unique(y))])
@@ -35,29 +36,30 @@ def plot_decision_regions(X, y, classifier, resolution=0.1):
 
     # step = len(grid_X) / size
     # grid_X_local = grid_X[rank*step:rank+step]
+    if hyperplane:
+        Z = np.array(classifier.predict(grid_X))
+        Z = Z.reshape(xx1.shape)
 
-    Z = np.array(classifier.predict(grid_X))
-    Z = Z.reshape(xx1.shape)
-
-    plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
-    plt.xlim(xx1.min(), xx1.max())
-    plt.ylim(xx2.min(), xx2.max())
+        plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
+        plt.xlim(xx1.min(), xx1.max())
+        plt.ylim(xx2.min(), xx2.max())
 
     for idx, cl in enumerate(np.unique(y)):
         plt.scatter(x=X[y == cl, 0], y=X[y == cl, 1],
                     alpha=0.8, c=cmap(idx),
                     label=cl)
 
-    x1 = np.linspace(x1_min + 1, x1_max - 1, 500)
-    x2 = list(map(f, x1))
-    plt.plot(x1,x2)
+    # x1 = np.linspace(x1_min + 1, x1_max - 1, 500)
+    # x2 = list(map(f, x1))
+    # plt.plot(x1,x2)
 
     plt.show()
 
 def gen():
-    X, y = model_generator((1.5,8),(-150,150), 1000)
+    X, y = model_generator((-5,5),(-10,25), 150)
     df = DataFrame(data=list(zip(X[:,0], X[:,1], y)), columns=['x1', 'x2', 'y'])
-    df.to_csv('../data/test_3.csv', index=False)
+    df.to_csv('../data/test_4.csv', index=False)
+    plot_decision_regions(X, y, 1)
 
 
 def gen_data():

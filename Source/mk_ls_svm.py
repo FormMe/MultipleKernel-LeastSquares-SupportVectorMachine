@@ -5,7 +5,7 @@ from functools import reduce
 
 
 class MKLSSVM:
-    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-4, max_iter=500):
+    def __init__(self, kernel_set, C=1.0, R=1.0, tol=1e-4, max_iter=50):
         self.C = C
         self.R = R
         self.tol = tol
@@ -29,7 +29,15 @@ class MKLSSVM:
                         H[i, j] = val
                         H[j, i] = val
                 H_vec.append(H)
-            return H_vec
+
+            Ky_vec = []
+            for H in H_vec:
+                Ky = []
+                for i, _ in enumerate(H):
+                    Ky.append(numpy.asarray([y * H[i, j] for j, y in enumerate(target)], dtype=float))
+                Ky_vec.append(Ky)
+
+            return H_vec, Ky_vec
 
         # Large Scale Algorithm
         def lagrange_coefficient_estimation():
@@ -44,8 +52,8 @@ class MKLSSVM:
                         H[i, j] += 1.0 / self.C
 
             d = numpy.ones(trainSeqLen)
-            eta = scipy.sparse.linalg.cg(H, target)[0]
-            nu = scipy.sparse.linalg.cg(H, d)[0]
+            eta = scipy.sparse.linalg.cg(H, target, maxiter=1000)[0]
+            nu = scipy.sparse.linalg.cg(H, d, maxiter=1000)[0]
             s = numpy.dot(target.T, eta)
             b = numpy.dot(eta.T, d) / s
             alpha = nu - eta * b
@@ -54,10 +62,7 @@ class MKLSSVM:
         def kernel_coefficient_estimation():
             def score_func(beta_vec):
                 def K_sum(i):
-                    weighted_kernels = []
-                    for b_c, H in zip(beta_vec, self.__Hvec):
-                        weighted_kernels.append(
-                            b_c * numpy.asarray([y * H[i, j] for j, y in enumerate(target)], dtype=float))
+                    weighted_kernels = [b_c * K[i] for b_c, K in zip(beta_vec, self.__Kyvec)]
                     return numpy.array(reduce(lambda l, m: l + m, weighted_kernels))
 
                 loss_func_vec = []
@@ -88,7 +93,7 @@ class MKLSSVM:
 
         self.__Xfit = data
         self.__Yfit = target
-        self.__Hvec = unweighted_kernel_matrix()
+        self.__Hvec,  self.__Kyvec = unweighted_kernel_matrix()
         prev_score_value = 0
         prev_beta_norm = numpy.linalg.norm(self.beta)
         cur_iter = 0
