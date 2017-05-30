@@ -4,9 +4,8 @@ from matplotlib.colors import ListedColormap
 from pandas import DataFrame, read_csv
 from sklearn.metrics import mean_squared_error
 
-from kernel import RBF
-from crossvalidation import *
-from mk_ls_svm import MKLSSVM
+from mk_ls_svm_lib.kernel import *
+from mk_ls_svm_lib.crossvalidation import *
 
 def f(x):
     return x**2
@@ -26,17 +25,20 @@ def plot_decision_regions(X, y, classifier, resolution=0.1, hyperplane=False):
     colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
     cmap = ListedColormap(colors[:len(np.unique(y))])
 
-    # plot the decision surface
-    x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-    x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-    xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
-                           np.arange(x2_min, x2_max, resolution))
-
-    grid_X = np.array([xx1.ravel(), xx2.ravel()]).T
-
     # step = len(grid_X) / size
     # grid_X_local = grid_X[rank*step:rank+step]
     if hyperplane:
+        # comm = MPI.COMM_WORLD
+        # size = comm.Get_size()
+        # rank = comm.Get_rank()
+
+        # plot the decision surface
+        x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+        x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+        xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                               np.arange(x2_min, x2_max, resolution))
+
+        grid_X = np.array([xx1.ravel(), xx2.ravel()]).T
         Z = np.array(classifier.predict(grid_X))
         Z = Z.reshape(xx1.shape)
 
@@ -52,7 +54,8 @@ def plot_decision_regions(X, y, classifier, resolution=0.1, hyperplane=False):
     # x1 = np.linspace(x1_min + 1, x1_max - 1, 500)
     # x2 = list(map(f, x1))
     # plt.plot(x1,x2)
-
+    plt.xlabel('x1')
+    plt.ylabel('x2')
     plt.show()
 
 def gen():
