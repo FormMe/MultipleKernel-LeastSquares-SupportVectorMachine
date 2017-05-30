@@ -5,14 +5,14 @@ from functools import reduce
 
 
 class MKLSSVM:
-    def __init__(self, kernel_set, kernel_matrix=None, C=1.0, tol=1e-4, max_iter=50):
+    def __init__(self, kernel_set, C=1.0, tol=1e-4, max_iter=50):
         self.C = C
         self.tol = tol
         self.max_iter = max_iter
         self.kernel_set = kernel_set
         self.beta = numpy.array([1.0 / len(kernel_set) for _ in kernel_set])
 
-    def fit(self, data, target):
+    def fit(self, data, target, kernel_m=None):
         def kernel_matrix():
             # H_vec представляет из себя вектор матриц вычисленных ядерных функций
             # взвешенная сумма этих матриц дает искомую матрицу ядер
@@ -28,15 +28,16 @@ class MKLSSVM:
                         H[i, j] = val
                         H[j, i] = val
                 H_vec.append(H)
+            return H_vec
 
+        def kernel_matrix_y():
             Ky_vec = []
-            for H in H_vec:
+            for H in self.__Hvec:
                 Ky = []
                 for i, _ in enumerate(H):
                     Ky.append(numpy.asarray([y * H[i, j] for j, y in enumerate(target)], dtype=float))
                 Ky_vec.append(Ky)
-
-            return H_vec, Ky_vec
+            return Ky_vec
 
         # Large Scale Algorithm
         def lagrange_coefficient_estimation():
@@ -92,7 +93,14 @@ class MKLSSVM:
 
         self.__Xfit = data
         self.__Yfit = target
-        self.__Hvec,  self.__Kyvec = kernel_matrix()
+
+        if kernel_m is None:
+            self.__Hvec = kernel_matrix()
+        else:
+            self.__Hvec = kernel_m
+
+        self.__Kyvec = kernel_matrix_y()
+
         prev_score_value = 0
         prev_beta_norm = numpy.linalg.norm(self.beta)
         cur_iter = 0
