@@ -1,8 +1,20 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 
-#K-fold Cross-Validation
 def cross_val_score(clf, X, y, cv=10):
+    '''K-fold Cross-Validation
+
+    :param clf: object
+        Модель классификатора
+    :param X: array-like, shape = [n_samples, n_features]
+        Обучающая выборка. Значение факторов наблюдений.
+    :param y: array-like, shape = [n_samples]
+        Значения классов обучающей выборки, соответсвующие X.
+    :param cv: int, optional (default=10)
+        Количество разбиений кросс-валидации
+    :return: float
+        Точность классификации по кросс-валидациив
+    '''
     data = list(zip(X, y))
     np.random.shuffle(data)
     data = np.array(data)
@@ -24,4 +36,4 @@ def cross_val_score(clf, X, y, cv=10):
         clf.fit(np.array(train_X),np.array(train_y))
         score = accuracy_score(list(test_y), list(clf.predict(test_X)))
         scores.append(score)
-    return np.mean(scores)
+    return np.mean(scores), np.std(scores)

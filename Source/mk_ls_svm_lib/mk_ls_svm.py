@@ -1,23 +1,41 @@
+import pickle
 import numpy
 import scipy
 from scipy.optimize import (minimize)
 from functools import reduce
 
-
 class MKLSSVM:
     def __init__(self, kernel_set, C=1.0, tol=1e-4, max_iter=50):
+        '''Мультияерный метод опорных векторов наименьших квадратов.
+        Автоматаческая настройка коэффициентов Лагранжа и коэффицентов ядерных функций
+        для задач бинарной классификации.
+
+        :param kernel_set: list of instances from kernel
+            Набор ядерных функций
+        :param C: float, optional (default=1.0)
+            Параметр ргуляризации
+        :param tol: float, optional (default=1e-4)
+            Достигаемая точность критерия останова
+        :param max_iter: int, optional (default=50)
+            Максимальное количество итераций
+        '''
         self.C = C
         self.tol = tol
         self.max_iter = max_iter
         self.kernel_set = kernel_set
         self.beta = numpy.array([1.0 / len(kernel_set) for _ in kernel_set])
 
-    def fit(self, data, target, kernel_m=None):
+    def fit(self, data, target):
+        '''Обучение модели на основе выборки
+
+        :param data: array-like, shape = [n_samples, n_features]
+            Обучающая выборка. Значение факторов наблюдений.
+        :param target: array-like, shape = [n_samples]
+            Значения классов обучающей выборки, соответсвующие data.
+        :return self: object
+            Returns self.
+        '''
         def kernel_matrix():
-            # H_vec представляет из себя вектор матриц вычисленных ядерных функций
-            # взвешенная сумма этих матриц дает искомую матрицу ядер
-            # значение ядер не поменяется на протяжении всего алгоритма
-            # будут меняться только веса
             trainSeqLen = len(target)
             H_vec = []
             for K in self.kernel_set:
@@ -39,7 +57,6 @@ class MKLSSVM:
                 Ky_vec.append(Ky)
             return Ky_vec
 
-        # Large Scale Algorithm
         def lagrange_coefficient_estimation():
             trainSeqLen = len(target)
             weighted_H = map(lambda h, beta: h * beta, self.__Hvec, self.beta)
@@ -78,14 +95,14 @@ class MKLSSVM:
             betaopt = minimize(score_func, self.beta,
                                bounds=bnds, constraints=cons,
                                method='SLSQP',
-                               options={'maxiter':1000, 'disp':False})
+                               options={'maxiter': 1000, 'disp': False})
 
             return betaopt.x, betaopt.fun
 
         classes = numpy.unique(target)
-        if len(classes) == 1 or len(classes) != 2:
-            raise Exception('The number of classes has to be equal two')
 
+        if len(classes) == 1 or len(classes) != 2:
+            raise Exception('Количество классов должно быть равно двум.')
         self.class_dict = {
             '1.0': classes[0],
             '-1.0': classes[1]}
@@ -94,11 +111,7 @@ class MKLSSVM:
         self.__Xfit = data
         self.__Yfit = target
 
-        if kernel_m is None:
-            self.__Hvec = kernel_matrix()
-        else:
-            self.__Hvec = kernel_m
-
+        self.__Hvec = kernel_matrix()
         self.__Kyvec = kernel_matrix_y()
 
         prev_score_value = 0
@@ -126,11 +139,17 @@ class MKLSSVM:
         return self
 
     def predict(self, data):
+        '''Предсказание принадлежности классу на основе ранее обученной модели
+
+        :param data: array-like, shape = [n_samples, n_features]
+            Тестовая выборка.
+        :return target: array-like, shape = [n_samples]
+            Значения классов, соответсвующие data.
+        '''
         def y_prediction(z):
-            support_vectors_sum =\
-                sum([alpha * y *
-                     sum([beta * K.compute(z, x) for beta, K in zip(self.beta, self.kernel_set)])
-                     for alpha, x, y in zip(self.alpha, self.__Xfit, self.__Yfit)])
+            support_vectors_sum = sum([alpha * y *
+                                       sum([beta * K.compute(z, x) for beta, K in zip(self.beta, self.kernel_set)])
+                                       for alpha, x, y in zip(self.alpha, self.__Xfit, self.__Yfit)])
 
             p = support_vectors_sum + self.b
             if p == 0.0:
@@ -138,3 +157,25 @@ class MKLSSVM:
             return self.class_dict[str(numpy.sign(p))]
 
         return [y_prediction(test_x) for test_x in data]
+
+    def to_pkl(self, filename):
+        '''Сохранение ранее обученной модели в файл *.pkl
+
+        :param filename:
+            Название файла с расширением *.pkl, куда будет сохранена модель
+        :return:
+        '''
+        with open(filename, 'wb') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+
+def load_clf_from_pkl(filename):
+    '''Загрузка модели из файла *.pkl
+
+    :param filename:
+        Название файла с расширением *.pkl, откуда будет загружена модель.
+    :return: MKLSSVM
+        Модель классификатора.
+    '''
+    with open(filename, 'rb') as input:
+        return pickle.load(input)
