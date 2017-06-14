@@ -6,32 +6,31 @@ from functools import reduce
 
 class MKLSSVM:
     def __init__(self, kernel_set, C=1.0, tol=1e-4, max_iter=50):
-        '''Мультияерный метод опорных векторов наименьших квадратов.
-        Автоматаческая настройка коэффициентов Лагранжа и коэффицентов ядерных функций
-        для задач бинарной классификации.
+        '''MultipleKernel Least Squares Suport Vector Machine for binary classification.
 
         :param kernel_set: list of instances from kernel
-            Набор ядерных функций
+            Set of kernels.
         :param C: float, optional (default=1.0)
-            Параметр ргуляризации
+            Penalty parameter C of the error term.
         :param tol: float, optional (default=1e-4)
-            Достигаемая точность критерия останова
+            Tolerance for stopping criterion.
         :param max_iter: int, optional (default=50)
-            Максимальное количество итераций
+           Hard limit on iterations within solver > 0.
         '''
         self.C = C
         self.tol = tol
         self.max_iter = max_iter
         self.kernel_set = kernel_set
         self.beta = numpy.array([1.0 / len(kernel_set) for _ in kernel_set])
+        self.fited = False
 
     def fit(self, data, target):
-        '''Обучение модели на основе выборки
+        '''Fit the SVM model according to the given training data.
 
         :param data: array-like, shape = [n_samples, n_features]
-            Обучающая выборка. Значение факторов наблюдений.
+            ОTraining vectors, where n_samples is the number of samples and n_features is the number of features. 
         :param target: array-like, shape = [n_samples]
-            Значения классов обучающей выборки, соответсвующие data.
+            Target values (class labels).
         :return self: object
             Returns self.
         '''
@@ -102,7 +101,7 @@ class MKLSSVM:
         classes = numpy.unique(target)
 
         if len(classes) == 1 or len(classes) != 2:
-            raise Exception('Количество классов должно быть равно двум.')
+            raise Exception('Number of class should be equal two.')
         self.class_dict = {
             '1.0': classes[0],
             '-1.0': classes[1]}
@@ -136,15 +135,15 @@ class MKLSSVM:
             prev_beta_norm = beta_norm
             cur_iter += 1
 
+        self.fited = True
         return self
 
     def predict(self, data):
-        '''Предсказание принадлежности классу на основе ранее обученной модели
+        '''Perform classification on samples in data.
 
         :param data: array-like, shape = [n_samples, n_features]
-            Тестовая выборка.
         :return target: array-like, shape = [n_samples]
-            Значения классов, соответсвующие data.
+            Class labels for samples in data.
         '''
         def y_prediction(z):
             support_vectors_sum = sum([alpha * y *
@@ -156,26 +155,32 @@ class MKLSSVM:
                 p = 1.0;
             return self.class_dict[str(numpy.sign(p))]
 
+        if not self.fited:
+            raise Exception("Fit classificator before.")
+
         return [y_prediction(test_x) for test_x in data]
 
     def to_pkl(self, filename):
-        '''Сохранение ранее обученной модели в файл *.pkl
+        '''Save classificator to *.pkl file.
 
         :param filename:
-            Название файла с расширением *.pkl, куда будет сохранена модель
+            File with extention *.pkl to save.
         :return:
         '''
+        
+        if not self.fited:
+            raise Exception("Fit classificator before.")
         with open(filename, 'wb') as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
 
 def load_clf_from_pkl(filename):
-    '''Загрузка модели из файла *.pkl
+    '''Load classificator from *.pkl file.
 
     :param filename:
-        Название файла с расширением *.pkl, откуда будет загружена модель.
+        File with extention *.pkl to load.
     :return: MKLSSVM
-        Модель классификатора.
+        Classificator
     '''
     with open(filename, 'rb') as input:
         return pickle.load(input)
