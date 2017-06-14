@@ -20,7 +20,7 @@ def cross_val_score(clf, X, y, n_splits=10):
     data = np.array(data)
     test_size = int(len(X) / n_splits)
     scores = []
-    for slice in range(cv):
+    for slice in range(n_splits):
         test_start = slice*test_size
         test_data = data[test_start:test_start+test_size]
 
