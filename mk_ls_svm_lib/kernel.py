@@ -4,19 +4,17 @@ import numpy as np
 class RBF:
     def __init__(self, sigma):
         '''
-        RBF-ядро
+        RBF-kernel
         :param sigma: float
-            Параметр ядра.
         '''
         self._sigma = sigma
 
     def compute(self, x, y):
-        '''Метод вычисляет значение ядра между двумя векторами
-
+        '''
         :param x: array-like
-            Первый вектор
+            First vector.
         :param y: array-like
-            Второй вектор
+            Second vector.
         :return: float
         '''
         sqr_dist = sum([(it1 - it2)**2 for it1, it2 in zip(x,y)])
@@ -27,23 +25,22 @@ class RBF:
 
 class Poly:
     def __init__(self, c, d):
-        ''' Полиномиальное ядро
+        ''' Polynomial kernel
 
         :param c: float
-            Параметр смещения
+            Parameter trading off the influence of higher-order versus lower-order terms in the polynomial.
         :param d: float
-            Параметр степени
+            Degree.
         '''
         self.__c = c
         self.__d = d
 
     def compute(self, x, y):
-        '''Метод вычисляет значение ядра между двумя векторами
-
+        '''
         :param x: array-like
-            Первый вектор
+            First vector.
         :param y: array-like
-            Второй вектор
+            Second vector.
         :return: float
         '''
         return (np.dot(x,y) + self.__c)**self.__d
