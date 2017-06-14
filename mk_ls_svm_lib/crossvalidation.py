@@ -1,26 +1,26 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 
-def cross_val_score(clf, X, y, cv=10):
+def cross_val_score(clf, X, y, n_splits=10):
     '''K-fold Cross-Validation
 
     :param clf: object
-        Модель классификатора
+        The object to use to fit the data.
     :param X: array-like, shape = [n_samples, n_features]
-        Обучающая выборка. Значение факторов наблюдений.
+        The data to fit. Can be, for example a list, or an array at least 2d.
     :param y: array-like, shape = [n_samples]
-        Значения классов обучающей выборки, соответсвующие X.
-    :param cv: int, optional (default=10)
-        Количество разбиений кросс-валидации
+        The target variable to try to predict in the case of supervised learning.
+    :param n_splits: int, optional (default=10)
+        Number of folds. Must be at least 2.
     :return: float
-        Точность классификации по кросс-валидациив
+        Score of the estimator for each run of the cross validation.
     '''
     data = list(zip(X, y))
     np.random.shuffle(data)
     data = np.array(data)
-    test_size = int(len(X) / cv)
+    test_size = int(len(X) / n_splits)
     scores = []
-    for slice in range(cv):
+    for slice in range(n_splits):
         test_start = slice*test_size
         test_data = data[test_start:test_start+test_size]
 
