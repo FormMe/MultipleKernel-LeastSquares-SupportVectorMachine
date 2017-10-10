@@ -1,5 +1,7 @@
 # MultipleKernel-LeastSquares-SuportVectorMachine
 
+**The research thesis report in Russian presented in report.pdf**
+
 **Firstly import package**
 ```python
 from mk_ls_svm_lib as mk
